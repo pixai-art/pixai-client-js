@@ -1,0 +1,5 @@
+mutation createGenerationTask($parameters: JSONObject!) {
+  createGenerationTask(parameters: $parameters) {
+    ...TaskBase
+  }
+}

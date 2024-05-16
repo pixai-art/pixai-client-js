@@ -1,0 +1,36 @@
+fragment MediaBase on Media {
+  id
+  type
+  width
+  height
+  urls {
+    variant
+    url
+  }
+  imageType
+  fileUrl
+  duration
+  thumbnailUrl
+  hlsUrl
+  size
+}
+
+fragment TaskBase on Task {
+  id
+  userId
+  parameters
+  outputs
+  status
+  startedAt
+  endAt
+  createdAt
+  updatedAt
+  favoritedAt
+  media {
+    ...MediaBase
+  }
+  type {
+    type
+    model
+  }
+}

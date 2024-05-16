@@ -1,0 +1,11 @@
+fragment AllEvents on Events {
+  taskUpdated {
+    ...TaskBase
+  }
+}
+
+subscription subscribePersonalEvents {
+  personalEvents {
+    ...AllEvents
+  }
+}

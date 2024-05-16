@@ -1,0 +1,34 @@
+{
+  "name": "@pixai-art/client",
+  "version": "0.1.0",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "types/index.d.ts",
+  "author": "Andy Frank <fandy0726@gmail.com>",
+  "private": false,
+  "license": "MIT",
+  "scripts": {
+    "build": "yarn build:cjs && yarn build:esm",
+    "build:esm": "tsc -p . -m ESNext --outDir dist/esm",
+    "build:cjs": "tsc -p . -m commonjs --outDir dist/cjs",
+    "prepublishOnly": "yarn build",
+    "gen:graphql": "graphql-codegen --config graphql/codegen.ts"
+  },
+  "peerDependencies": {
+    "graphql": "16",
+    "graphql-ws": "5",
+    "rxjs": "7"
+  },
+  "devDependencies": {
+    "@graphql-codegen/cli": "^5.0.2",
+    "@graphql-codegen/typescript-generic-sdk": "^4.0.1",
+    "@graphql-codegen/typescript-operations": "^4.1.2",
+    "@types/node": "^20.10.1",
+    "graphql": "^16.8.1",
+    "graphql-codegen-typescript-operation-types": "^2.0.1",
+    "graphql-ws": "^5.14.3",
+    "rxjs": "^7.8.1",
+    "typescript": "^5.3.3",
+    "ws": "^8.16.0"
+  }
+}
