@@ -26,9 +26,6 @@ fragment TaskBase on Task {
   createdAt
   updatedAt
   favoritedAt
-  media {
-    ...MediaBase
-  }
   type {
     type
     model

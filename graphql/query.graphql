@@ -1,0 +1,11 @@
+query getTaskById($id: ID!) {
+  task(id: $id) {
+    ...TaskBase
+  }
+}
+
+query getMediaById($id: String!) {
+  media(id: $id) {
+    ...MediaBase
+  }
+}

@@ -1,3 +1,5 @@
+import assert from 'assert'
+import fs from 'fs/promises'
 import { createInterface } from 'readline/promises'
 import PixAIClient from '../src'
 
@@ -15,6 +17,8 @@ const main = async () => {
   const prompts = await rl.question(
     'What do you want to generate an image of? ',
   )
+
+  console.log('generating image for you...')
   const task = await client.generateImage(
     {
       prompts,
@@ -28,7 +32,19 @@ const main = async () => {
       },
     },
   )
-  console.log(111, task)
+
+  const media = await client.getMediaFromTask(task)
+
+  assert(media && !Array.isArray(media))
+
+  console.log('downloading generated image...')
+  const buffer = await client.downloadMedia(media)
+
+  await fs.writeFile('output.png', Buffer.from(buffer))
+
+  console.log('done! check image named output.png')
+
+  process.exit(0)
 }
 
 main()

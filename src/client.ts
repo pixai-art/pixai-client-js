@@ -1,11 +1,18 @@
 import type { GraphQLFormattedError } from 'graphql'
 import { Observable, filter, firstValueFrom, map } from 'rxjs'
 import {
+  MediaBaseFragment,
+  MediaProvider,
+  MediaType,
   Requester,
   SubscribePersonalEventsSubscription,
+  TaskBaseFragment,
+  UploadMediaInput,
+  UploadMediaMutation,
   getSdk,
 } from './generated/graphql'
-import { GenerateImageOptions, TaskParameters } from './type'
+import { TaskParameters } from './parameters.types'
+import { GenerateImageOptions } from './type'
 import { RestartableClient, createRestartableClient } from './websocket'
 
 export interface PixAIClientOptions {
@@ -174,17 +181,35 @@ export class PixAIClient {
     this.graphqlWsClients.clear()
   }
 
+  async createGenerationTask(parameters: TaskParameters) {
+    const { createGenerationTask } = await this.rawSdk.createGenerationTask({
+      parameters,
+    })
+
+    return createGenerationTask
+  }
+
+  async cancelGenerationTask(id: string) {
+    const { cancelGenerationTask } = await this.rawSdk.cancelGenerationTask({
+      id,
+    })
+
+    return cancelGenerationTask
+  }
+
+  async getTaskById(id: string) {
+    const { task } = await this.rawSdk.getTaskById({
+      id,
+    })
+
+    return task
+  }
+
   async generateImage(
     parameters: TaskParameters,
     options: GenerateImageOptions = {},
   ) {
-    const { createGenerationTask: task } =
-      await this.rawSdk.createGenerationTask({
-        parameters: {
-          ...parameters,
-          priority: 1000,
-        },
-      })
+    const task = await this.createGenerationTask(parameters)
 
     if (!task)
       throw new PixAIApiError(
@@ -209,5 +234,129 @@ export class PixAIClient {
     subscription?.unsubscribe()
 
     return result
+  }
+
+  private async getUploadUrl(type: MediaType, provider: MediaProvider) {
+    const {
+      uploadMedia: { uploadUrl, externalId },
+    } = await this.rawSdk.uploadMedia({
+      input: {
+        type,
+        provider,
+      },
+    })
+    if (!uploadUrl) throw new Error('Upload url is not specified')
+    return {
+      uploadUrl,
+      externalId,
+    }
+  }
+
+  private async registerMedia(input: UploadMediaInput) {
+    const { uploadMedia } = await this.rawSdk.uploadMedia({
+      input,
+    })
+
+    return uploadMedia
+  }
+
+  protected async uploadMediaFile(file: File) {
+    const provider = MediaProvider.S3
+
+    const type = file.type.startsWith('image')
+      ? MediaType.Image
+      : file.type.startsWith('video')
+      ? MediaType.Video
+      : undefined
+    if (!type) {
+      throw new Error(`Unsupported media type ${type}`)
+    }
+    const { uploadUrl, externalId } = await this.getUploadUrl(type, provider)
+    if (!uploadUrl) {
+      throw new Error('Upload url is not specified')
+    }
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const init: RequestInit =
+      type === MediaType.Image && provider !== MediaProvider.S3 // S3 uses PUT method
+        ? {
+            method: 'POST',
+            body: formData,
+          }
+        : {
+            method: 'PUT',
+            body: file,
+          }
+
+    await fetch(uploadUrl, init)
+
+    return await this.uploadMedia({
+      type,
+      provider,
+      externalId: externalId ?? undefined,
+    })
+  }
+
+  protected async uploadMediaUrl(url: string) {
+    const res = await fetch(url)
+    const blob = await res.blob()
+    const filename = url.split('/').pop() ?? 'file'
+    const file = new File([blob], filename, {
+      type: blob.type,
+    })
+    return await this.uploadMediaFile(file)
+  }
+
+  async uploadMedia(
+    input: UploadMediaInput | File | string,
+  ): Promise<UploadMediaMutation['uploadMedia']> {
+    if (typeof input === 'string') {
+      return this.uploadMediaUrl(input)
+    }
+
+    if (input instanceof File) {
+      return this.uploadMediaFile(input)
+    }
+
+    return this.registerMedia(input)
+  }
+
+  async getMediaById(id: string) {
+    const { media } = await this.rawSdk.getMediaById({
+      id,
+    })
+
+    return media
+  }
+
+  getPublicUrl(media: MediaBaseFragment) {
+    return media.urls?.find(url => url.variant === 'PUBLIC')?.url
+  }
+
+  async downloadMedia(media: MediaBaseFragment) {
+    const url = this.getPublicUrl(media)
+    if (!url) {
+      throw new Error('Public url is not available')
+    }
+    const res = await fetch(url)
+    return res.arrayBuffer()
+  }
+
+  async getMediaFromTask(task: TaskBaseFragment) {
+    if (task.status !== 'completed') {
+      throw new Error('Task is not completed')
+    }
+
+    if (Array.isArray(task.outputs?.batch)) {
+      return await Promise.all(
+        task.outputs.batch.map(async (i: any) => {
+          return this.getMediaById(i.mediaId)
+        }),
+      )
+    }
+
+    return await this.getMediaById(task.outputs?.mediaId!)
   }
 }
