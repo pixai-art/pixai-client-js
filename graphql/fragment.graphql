@@ -8,11 +8,6 @@ fragment MediaBase on Media {
     url
   }
   imageType
-  fileUrl
-  duration
-  thumbnailUrl
-  hlsUrl
-  size
 }
 
 fragment TaskBase on Task {
@@ -25,9 +20,4 @@ fragment TaskBase on Task {
   endAt
   createdAt
   updatedAt
-  favoritedAt
-  type {
-    type
-    model
-  }
 }
