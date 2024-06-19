@@ -1,6 +1,6 @@
-import assert from 'assert'
-import fs from 'fs/promises'
-import { createInterface } from 'readline/promises'
+import assert from 'node:assert'
+import fs from 'node:fs/promises'
+import { createInterface } from 'node:readline/promises'
 import PixAIClient from '../src'
 
 const rl = createInterface({

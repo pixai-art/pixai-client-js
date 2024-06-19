@@ -13,13 +13,18 @@ you can use any of your preferred package managers to install it.
 
 Following is a simple example of how you can use the client to generate an image.
 
-For more examples, please refer to the [examples](./examples) directory.
+For more examples, please refer to the [example](./example) directory.
 
 For more information on the API, please refer to the [documentation](https://platform.pixai.art/docs).
 
+> [!NOTE]
+> By design, this library can be used in both Node.js and browser environments. However, since the Node.js environment does not come with a WebSocket implementation, you'll need to install the `ws` or any other similar libraries additionally if you need to use WebSocket to listen for changes in real-time tasks.
+
 ```typescript
-import { createInterface } from 'readline/promises'
-import PixAIClient from '../src'
+import assert from 'node:assert'
+import fs from 'node:fs/promises'
+import { createInterface } from 'node:readline/promises'
+import PixAIClient from '@pixai-art/client'
 
 const rl = createInterface({
   input: process.stdin,
@@ -49,9 +54,20 @@ const main = async () => {
     },
   )
   console.log('Task completed: ', task)
+
+  const media = await client.getMediaFromTask(task)
+
+  assert(media && !Array.isArray(media))
+
+  console.log('downloading generated image...')
+  const buffer = await client.downloadMedia(media)
+
+  await fs.writeFile('output.png', Buffer.from(buffer))
+
+  console.log('done! check image named output.png')
+
+  process.exit(0)
 }
 
 main()
 ```
-
-By design, this library can be used in both Node.js and browser environments. However, since the Node.js environment does not come with a WebSocket implementation, you'll need to install the `ws` or any other similar libraries additionally if you need to use WebSocket to listen for changes in real-time tasks.
