@@ -5,20 +5,6 @@
  * "stable diffusion glossary."
  */
 export interface TaskParameters {
-  animateDiff?: AnimateDiff
-  /**
-   * This field was used for allowing anonymous image uploads in our early days. However, it
-   * currently has no effect. For compatibility reasons, this field is still allowed to be
-   * passed, but please do not use this parameter now.
-   */
-  authorName?: string
-  /**
-   * If you want to automatically publish your work after the generation is completed you can
-   * set this value to true.
-   * But we do not want a picture to be published in unknown circumstances. So we will
-   * consider removing this feature. Please do not use this field as possible.
-   */
-  autoPublish?: number
   /**
    * The number of images to generate in one task.
    */
@@ -60,17 +46,14 @@ export interface TaskParameters {
    */
   height?: number
   /**
-   * Whether to hide the prompts when you publish the result.
+   * The inputs field is used to call the workflow with the specified inputs.
    */
-  hidePrompts?: boolean
+  inputs?: { [key: string]: any }
   /**
-   * If you think your generated image is NSFW, please set this field to true.
+   * IP-adapter (Image Prompt adapter) is a Stable Diffusion add-on for using images as
+   * prompts. You can use it to copy the style, composition, or a face in the reference image.
    */
-  isNsfw?: boolean
-  /**
-   * Whether or not to allow your images to be seen by others after they are posted.
-   */
-  isPrivate?: boolean
+  ipAdapter?: IPAdapter
   /**
    * LatentCouple is a technology to determine the region of the latent space that reflects
    * your sub-prompts. You can reference the [original
@@ -82,6 +65,9 @@ export interface TaskParameters {
    * LoRA in the context of stable diffusion is a machine learning technique for fine-tuning
    * generative models to adjust their outputs without extensive retraining. It allows for
    * efficient model customization and control over the generated content.
+   * The format of the lora field is a JSON object. The key is the version id of the lora
+   * model in the model market. The value is the weight of the lora to be applied. The weight
+   * is a float number between 0 and 1.
    */
   lora?: { [key: string]: number }
   /**
@@ -103,10 +89,6 @@ export interface TaskParameters {
    */
   mediaUrl?: string
   /**
-   * This is a legacy parameter. It doesn't work at present.
-   */
-  model?: string
-  /**
    * The id of the model version in model market. You can find the URL of the model version.
    */
   modelId?: string
@@ -118,11 +100,6 @@ export interface TaskParameters {
    */
   negativePrompts?: string
   /**
-   * This is a legacy parameter. Used to control the priority of tasks. You do not need to
-   * pass this parameter now.
-   */
-  priority?: number
-  /**
    * What you want to see in the generated image.
    * The prompt is a short sentence or a few words that describe the content of the image.
    *
@@ -130,7 +107,6 @@ export interface TaskParameters {
    * WebUI or ComfyUI. But Square brackets and curly braces are not supported.
    */
   prompts?: string
-  rootThemeId?: string
   /**
    * The method used to sample from the model. Each model will have its own default values.
    * You can learn about the parameter values we support through our documentation.
@@ -157,17 +133,6 @@ export interface TaskParameters {
    * Variation seed, at minimum - pictures with the original Seed
    */
   strength?: number
-  /**
-   * If you wish to automatically publish your images. You can use this field to set the tag
-   * you wish to add to it
-   */
-  tags?: string[]
-  /**
-   * If you want to automatically publish your work after the generation is completed.
-   *
-   * The title is a short sentence that describes the content of the image.
-   */
-  title?: string
   /**
    * This field will use Hires Fix to upscale your final image.
    */
@@ -199,31 +164,41 @@ export interface TaskParameters {
    */
   width?: number
   workflow?: ComfyUICompatibleWorkflow
-}
-
-export interface AnimateDiff {
-  enabled?: boolean
-  long?: boolean
-  smooth?: boolean
-  v2?: V2
-}
-
-export interface V2 {
-  denoise?: number
-  motionScale?: number
+  /**
+   * You can use this field to specify which workflow you want to execute. The format is
+   * `{username}/{workflowUniqueId}:{versionName}`.
+   */
+  workflowName?: string
+  [property: string]: any
 }
 
 export interface ControlNet {
-  guidanceStart?: number
-  guidanceStop?: number
-  maskMediaId?: string
-  maskMediaUrl?: string
+  /**
+   * The reference image id for the control net.
+   */
   mediaId?: string
   mediaUrl?: string
-  thresholdA?: number
-  thresholdB?: number
+  /**
+   * The type of the control net.
+   * Currently, we support the following types: `dwpose`, `openpose_full`, `canny`, `depth`,
+   * `hed`, `mlsd`, `openpose`, `seg`, `normal`, `scribble`.
+   * You can learn the details of each type in our generation panel.
+   */
   type?: string
   weight?: number
+  [property: string]: any
+}
+
+/**
+ * IP-adapter (Image Prompt adapter) is a Stable Diffusion add-on for using images as
+ * prompts. You can use it to copy the style, composition, or a face in the reference image.
+ */
+export interface IPAdapter {
+  enabled?: boolean
+  /**
+   * The reference images media id list.
+   */
+  referenceImages?: string[]
   [property: string]: any
 }
 

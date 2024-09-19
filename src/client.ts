@@ -1,19 +1,19 @@
 import type { GraphQLFormattedError } from 'graphql'
 import { Observable, filter, firstValueFrom, map } from 'rxjs'
 import {
-  MediaBaseFragment,
+  type MediaBaseFragment,
   MediaProvider,
   MediaType,
-  Requester,
-  SubscribePersonalEventsSubscription,
-  TaskBaseFragment,
-  UploadMediaInput,
-  UploadMediaMutation,
+  type Requester,
+  type SubscribePersonalEventsSubscription,
+  type TaskBaseFragment,
+  type UploadMediaInput,
+  type UploadMediaMutation,
   getSdk,
 } from './generated/graphql'
-import { TaskParameters } from './parameters.types'
-import { GenerateImageOptions } from './type'
-import { RestartableClient, createRestartableClient } from './websocket'
+import type { TaskParameters } from './parameters.types'
+import type { GenerateImageOptions } from './type'
+import { type RestartableClient, createRestartableClient } from './websocket'
 
 export interface PixAIClientOptions {
   apiKey: string
@@ -23,6 +23,7 @@ export interface PixAIClientOptions {
   webSocketImpl?: unknown
 }
 
+// biome-ignore lint/suspicious/noEmptyInterface: may be extended in the future
 export interface PixAIGraphqlRequestOptions {}
 
 export type PixAIClientRequester = Requester<PixAIGraphqlRequestOptions>
@@ -71,7 +72,7 @@ export class PixAIClient {
     return new Observable<R>(subscriber => {
       const graphqlWsClient = createRestartableClient({
         webSocketImpl: this.opt.webSocketImpl,
-        url: this.webSocketBaseUrl + '/graphql',
+        url: `${this.webSocketBaseUrl}/graphql`,
         connectionParams: () => {
           return {
             token: this.opt.apiKey,
@@ -97,7 +98,6 @@ export class PixAIClient {
             }
           },
           error: e => {
-            console.log(e)
             if (e instanceof Error) {
               subscriber.error(e)
             } else if (isCloseEvent(e)) {
@@ -121,7 +121,7 @@ export class PixAIClient {
     query: string,
     variables: V,
   ) => {
-    const res = await this.fetch(this.apiBaseUrl + '/graphql', {
+    const res = await this.fetch(`${this.apiBaseUrl}/graphql`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -154,16 +154,18 @@ export class PixAIClient {
     return data.data
   }
 
-  protected getRequester(): PixAIClientRequester {
-    return (doc, variables) => {
-      if (doc.trimStart().startsWith('subscription')) {
-        return this.subscriptionRequest(doc, variables)
-      }
-      return this.normalRequest(doc, variables)
+  sendRawRequest: PixAIClientRequester = function (
+    this: PixAIClient,
+    doc,
+    variables,
+  ) {
+    if (doc.trimStart().startsWith('subscription')) {
+      return this.subscriptionRequest(doc, variables)
     }
+    return this.normalRequest(doc, variables)
   }
 
-  rawSdk = getSdk(this.getRequester())
+  rawSdk = getSdk(this.sendRawRequest.bind(this))
 
   protected _$personalEvents?: Observable<SubscribePersonalEventsSubscription>
 
@@ -219,6 +221,7 @@ export class PixAIClient {
     const { onUpdate } = options
 
     const $taskUpdated = this.$personalEvents.pipe(
+      // biome-ignore lint/style/noNonNullAssertion: assertion for type guard only
       map(event => event.personalEvents?.taskUpdated!),
       filter(taskUpdated => taskUpdated?.id === task.id),
     )
@@ -266,8 +269,8 @@ export class PixAIClient {
     const type = file.type.startsWith('image')
       ? MediaType.Image
       : file.type.startsWith('video')
-      ? MediaType.Video
-      : undefined
+        ? MediaType.Video
+        : undefined
     if (!type) {
       throw new Error(`Unsupported media type ${type}`)
     }
@@ -351,12 +354,12 @@ export class PixAIClient {
 
     if (Array.isArray(task.outputs?.batch)) {
       return await Promise.all(
-        task.outputs.batch.map(async (i: any) => {
+        task.outputs.batch.map(async (i: { mediaId: string }) => {
           return this.getMediaById(i.mediaId)
         }),
       )
     }
 
-    return await this.getMediaById(task.outputs?.mediaId!)
+    return await this.getMediaById(task.outputs?.mediaId)
   }
 }
