@@ -16,15 +16,16 @@ import type { GenerateImageOptions } from './type'
 import { type RestartableClient, createRestartableClient } from './websocket'
 
 export interface PixAIClientOptions {
-  apiKey: string
+  apiKey?: string
   fetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
   apiBaseUrl?: string
   webSocketBaseUrl?: string
   webSocketImpl?: unknown
 }
 
-// biome-ignore lint/suspicious/noEmptyInterface: may be extended in the future
-export interface PixAIGraphqlRequestOptions {}
+export interface PixAIGraphqlRequestOptions {
+  headers?: Record<string, string>
+}
 
 export type PixAIClientRequester = Requester<PixAIGraphqlRequestOptions>
 
@@ -68,6 +69,7 @@ export class PixAIClient {
   protected subscriptionRequest: PixAIClientRequester = <R, V>(
     query: string,
     variables: V,
+    opt?: PixAIGraphqlRequestOptions,
   ) => {
     return new Observable<R>(subscriber => {
       const graphqlWsClient = createRestartableClient({
@@ -120,14 +122,24 @@ export class PixAIClient {
   protected normalRequest: PixAIClientRequester = async <R, V>(
     query: string,
     variables: V,
+    opt?: PixAIGraphqlRequestOptions,
   ) => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'User-Agent': this.userAgent,
+    }
+
+    if (this.opt.apiKey) {
+      headers.Authorization = `Bearer ${this.opt.apiKey}`
+    }
+
+    if (opt?.headers) {
+      Object.assign(headers, opt.headers)
+    }
+
     const res = await this.fetch(`${this.apiBaseUrl}/graphql`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.opt.apiKey}`,
-        'User-Agent': this.userAgent,
-      },
+      headers,
       body: JSON.stringify({
         query,
         variables,
@@ -158,11 +170,12 @@ export class PixAIClient {
     this: PixAIClient,
     doc,
     variables,
+    opt,
   ) {
     if (doc.trimStart().startsWith('subscription')) {
-      return this.subscriptionRequest(doc, variables)
+      return this.subscriptionRequest(doc, variables, opt)
     }
-    return this.normalRequest(doc, variables)
+    return this.normalRequest(doc, variables, opt)
   }
 
   rawSdk = getSdk(this.sendRawRequest.bind(this))
